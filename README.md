@@ -12,7 +12,24 @@
 
 ## GeekMagic Mini Display adapter for ioBroker
 
-Adapter for GeekMagic SmallTV and similar mini displays.
+This adapter allows you to control and display data on GeekMagic SmallTV and similar mini displays (like the SmallTV-Pro) directly from ioBroker.
+
+### Credits
+This project is inspired by and derived from the excellent work of [adrienbrault/geekmagic-hacs](https://github.com/adrienbrault/geekmagic-hacs).
+
+### Features
+* **Custom Widgets**: Create your own display layouts using different widget types.
+* **Layout Support**: Supports full-screen widgets or a 2x2 grid layout (4 slots).
+* **Widget Types**:
+    * **Text**: Display any state value as text.
+    * **Gauge (Tacho)**: Visual gauge for numerical values.
+    * **Progress Bar**: Horizontal progress indicators.
+    * **Circle Progress**: Circular progress visualization.
+* **Dynamic Styling**:
+    * **Gradients**: Support for smooth color gradients based on values.
+    * **Custom Colors**: Manually define colors for each widget.
+* **Throttled Rendering**: Optimized update cycles to prevent overloading the display hardware.
+* **Connection Monitoring**: Automatically tracks the online status of your display.
 
 ## Changelog
 ### 0.3.0 (2026-04-19)
