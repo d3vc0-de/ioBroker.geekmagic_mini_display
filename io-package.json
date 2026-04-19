@@ -1,0 +1,89 @@
+{
+	"common": {
+		"name": "geekmagic_mini_display",
+		"version": "0.0.1",
+		"news": {
+			"0.0.1": {
+				"en": "initial release",
+				"de": "Erstveröffentlichung",
+				"ru": "Начальная версия",
+				"pt": "lançamento inicial",
+				"nl": "Eerste uitgave",
+				"fr": "Première version",
+				"it": "Versione iniziale",
+				"es": "Versión inicial",
+				"pl": "Pierwsze wydanie",
+				"uk": "Початкова версія",
+				"zh-cn": "首次出版"
+			}
+		},
+		"titleLang": {
+			"en": "GeekMagic Mini Display",
+			"de": "GeekMagic Mini-Display",
+			"ru": "Мини-дисплей GeekMagic",
+			"pt": "Mini display GeekMagic",
+			"nl": "GeekMagic Mini-display",
+			"fr": "Mini-écran GeekMagic",
+			"it": "Mini display GeekMagic",
+			"es": "Mini pantalla GeekMagic",
+			"pl": "Miniwyświetlacz GeekMagic",
+			"uk": "Міні-дисплей GeekMagic",
+			"zh-cn": "GeekMagic 迷你显示器"
+		},
+		"desc": {
+			"en": "geekmagic_mini_display",
+			"de": "geekmagic_mini_display",
+			"ru": "geekmagic_mini_display",
+			"pt": "geekmagic_mini_display",
+			"nl": "geekmagic_mini_display",
+			"fr": "geekmagic_mini_display",
+			"it": "geekmagic_mini_display",
+			"es": "geekmagic_mini_display",
+			"pl": "geekmagic_mini_display",
+			"uk": "geekmagic_mini_display",
+			"zh-cn": "geekmagic_mini_display"
+		},
+		"authors": [
+			"d3vc0_de <d3vc0_de@protonmail.com>"
+		],
+		"keywords": [
+			"geekmagic",
+			"display"
+		],
+		"licenseInformation": {
+			"type": "free",
+			"license": "MIT"
+		},
+		"platform": "Javascript/Node.js",
+		"icon": "geekmagic_mini_display.png",
+		"enabled": true,
+		"extIcon": "https://raw.githubusercontent.com/d3vc0_de/ioBroker.geekmagic_mini_display/main/admin/geekmagic_mini_display.png",
+		"readme": "https://github.com/d3vc0_de/ioBroker.geekmagic_mini_display/blob/main/README.md",
+		"loglevel": "info",
+		"tier": 3,
+		"mode": "daemon",
+		"type": "visualization",
+		"compact": true,
+		"connectionType": "local",
+		"dataSource": "push",
+		"adminUI": {
+			"config": "json"
+		},
+		"dependencies": [
+			{
+				"js-controller": ">=6.0.11"
+			}
+		],
+		"globalDependencies": [
+			{
+				"admin": ">=7.0.23"
+			}
+		]
+	},
+	"native": {
+		"ipAddress": "192.168.1.1",
+		"model": "smalltv_pro"
+	},
+	"objects": [],
+	"instanceObjects": []
+}

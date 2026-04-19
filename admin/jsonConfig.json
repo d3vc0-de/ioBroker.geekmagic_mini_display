@@ -1,0 +1,47 @@
+{
+	"i18n": true,
+	"type": "panel",
+	"items": {
+		"ipAddress": {
+			"type": "text",
+			"label": "IP Address",
+			"help": "IP of your GeekMagic display",
+			"newLine": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 4,
+			"xl": 4
+		},
+		"model": {
+			"type": "select",
+			"label": "Device Model",
+			"options": [
+				{ "label": "SmallTV / SmallTV Pro", "value": "smalltv_pro" },
+				{ "label": "SmallTV Ultra", "value": "smalltv_ultra" },
+				{ "label": "Hello Cubic", "value": "hellocubic" }
+			],
+			"newLine": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 4,
+			"xl": 4
+		},
+		"layout": {
+			"type": "select",
+			"label": "Display Layout",
+			"options": [
+				{ "label": "Single Widget (240x240)", "value": "1x1" },
+				{ "label": "2x2 Grid (120x120)", "value": "2x2" },
+				{ "label": "3x3 Grid (80x80)", "value": "3x3" }
+			],
+			"newLine": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 4,
+			"xl": 4
+		}
+	}
+}
