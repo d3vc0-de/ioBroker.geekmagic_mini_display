@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "geekmagic_mini_display",
-		"version": "0.2.0",
+		"version": "0.3.0",
 		"news": {
+			"0.3.0": {
+				"en": "final testing fixes and documentation cleanup",
+				"de": "Finale Test-Fixes und Bereinigung der Dokumentation",
+				"ru": "окончательные исправления тестирования и очистка документации",
+				"pt": "correções finais de teste e limpeza de documentação",
+				"nl": "laatste testoplossingen en opschoning van documentatie",
+				"fr": "dernières corrections de test et nettoyage de la documentation",
+				"it": "correzioni finali dei test e pulizia della documentazione",
+				"es": "correcciones finales de prueba y limpieza de documentación",
+				"pl": "ostateczne poprawki testowe i czyszczenie dokumentacji",
+				"uk": "остаточні виправлення тестування та очищення документації",
+				"zh-cn": "最终测试修复和文档清理"
+			},
 			"0.2.0": {
 				"en": "fixed testing errors and code cleanup",
 				"de": "Testfehler behoben und Code bereinigt",

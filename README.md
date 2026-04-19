@@ -15,6 +15,9 @@
 Adapter for GeekMagic SmallTV and similar mini displays.
 
 ## Changelog
+### 0.3.0 (2026-04-19)
+* (d3vc0_de) final testing fixes and documentation cleanup
+
 ### 0.2.0 (2026-04-19)
 * (d3vc0_de) fix testing errors and code cleanup
 * (d3vc0_de) add support for visual gradients and dynamic text
