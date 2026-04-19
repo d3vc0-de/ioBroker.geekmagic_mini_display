@@ -16,21 +16,29 @@ class GeekmagicMiniDisplay extends utils.Adapter {
     }
 
     async onReady() {
-        this.log.info('Starting GeekMagic Mini Display (White Text Mode)...');
+        this.log.info('Starting GeekMagic Mini Display (Throttled Mode)...');
         if (!this.config.ipAddress) return;
+
         await this.refreshConfig();
+
         for (const w of this.currentWidgets) {
             if (w.enabled && w.oid) await this.subscribeForeignStatesAsync(w.oid);
         }
+
         await this.setObjectNotExistsAsync('info.connection', {
             type: 'state',
             common: { name: 'Connection Status', type: 'boolean', role: 'indicator.connected', read: true, write: false },
             native: {},
         });
+
         this.checkConnection();
         this.connectionInterval = setInterval(() => this.checkConnection(), 60000);
+        
+        // Push all enabled screens immediately on start
         await this.renderAllScreens();
+        
         const intervalMs = (parseInt(this.config.updateInterval) || 30) * 1000;
+        this.log.info(`Update interval set to ${intervalMs / 1000} seconds.`);
         this.renderInterval = setInterval(() => this.processDirtySlots(), intervalMs);
     }
 
@@ -47,6 +55,7 @@ class GeekmagicMiniDisplay extends utils.Adapter {
 
     async processDirtySlots() {
         if (this.dirtySlots.size === 0) return;
+        this.log.info(`Processing updates for ${this.dirtySlots.size} slots...`);
         await this.refreshConfig();
         const slotsToProcess = Array.from(this.dirtySlots);
         this.dirtySlots.clear();
@@ -116,29 +125,44 @@ class GeekmagicMiniDisplay extends utils.Adapter {
     async drawWidget(image, x, y, size, widget, val, fontS, fontM) {
         const min = widget.min !== undefined ? parseFloat(widget.min.toString().replace(',', '.')) : 0;
         const max = widget.max !== undefined ? parseFloat(widget.max.toString().replace(',', '.')) : 100;
-        
         const decimals = widget.decimals !== undefined ? parseInt(widget.decimals) : 1;
         let displayValue = (val !== null && val !== undefined ? (typeof val === 'number' ? val.toFixed(decimals) : val.toString()) : '-') + (widget.unit ? ' ' + widget.unit : '');
 
-        const currentFont = size < 200 ? fontS : fontM;
         if (widget.label) image.print(fontS, x + 2, y + 2, { text: widget.label.toString(), alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
 
-        if (widget.widgetType === 'progress') {
-            const barH = size < 200 ? 10 : 20;
-            this.drawProgressBar(image, val, min, max, x + 10, y + (size / 2) - 5, size - 20, barH, widget);
-            image.print(currentFont, x + 2, y + (size / 2) + barH + 5, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
-        } else if (widget.widgetType === 'gauge') {
-            const radius = size / 3.5;
-            this.drawGauge(image, val, min, max, x + (size / 2), y + (size / 2) + 10, radius, widget);
-            image.print(currentFont, x + 2, y + (size / 2) + 25, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
-        } else if (widget.widgetType === 'circle') {
-            const radius = size / 3.5;
-            this.drawCircleProgress(image, val, min, max, x + (size / 2), y + (size / 2), radius, widget);
-            image.print(currentFont, x + 2, y + (size / 2) - 10, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+        if (widget.widgetType === 'progress' || widget.widgetType === 'gauge' || widget.widgetType === 'circle') {
+            const colorHex = widget.useGradient && widget.colorStart && widget.colorEnd ? this.interpolateColor(widget.colorStart, widget.colorEnd, val, min, max) : (widget.color || '#00FF00');
+            const colorInt = parseInt(colorHex.replace('#', '0x') + 'FF', 16);
+            
+            if (widget.widgetType === 'progress') {
+                const barH = size < 200 ? 10 : 20;
+                this.drawProgressBar(image, val, min, max, x + 10, y + (size / 2) - 5, size - 20, barH, widget);
+                image.print(size < 200 ? fontS : fontM, x + 2, y + (size / 2) + barH + 5, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+            } else if (widget.widgetType === 'gauge') {
+                const radius = size / 3.5;
+                this.drawGauge(image, val, min, max, x + (size / 2), y + (size / 2) + 10, radius, widget);
+                image.print(size < 200 ? fontS : fontM, x + 2, y + (size / 2) + 25, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+            } else {
+                const radius = size / 3.5;
+                this.drawCircleProgress(image, val, min, max, x + (size / 2), y + (size / 2), radius, widget);
+                image.print(size < 200 ? fontS : fontM, x + 2, y + (size / 2) - 10, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+            }
         } else {
-            // Text only (always white as requested)
-            image.print(currentFont, x + 2, y + (size / 2) - 15, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+            image.print(size < 200 ? fontS : fontM, x + 2, y + (size / 2) - 15, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
         }
+    }
+
+    interpolateColor(startHex, endHex, val, min, max) {
+        const ratio = Math.min(Math.max((val - min) / (max - min), 0), 1);
+        const parse = (hex) => {
+            const h = hex.replace('#', '');
+            return { r: parseInt(h.substring(0, 2), 16), g: parseInt(h.substring(2, 4), 16), b: parseInt(h.substring(4, 6), 16) };
+        };
+        const s = parse(startHex), e = parse(endHex);
+        const r = Math.round(s.r + (e.r - s.r) * ratio).toString(16).padStart(2, '0');
+        const g = Math.round(s.g + (e.g - s.g) * ratio).toString(16).padStart(2, '0');
+        const b = Math.round(s.b + (e.b - s.b) * ratio).toString(16).padStart(2, '0');
+        return `#${r}${g}${b}`;
     }
 
     getColorByRatio(startHex, endHex, ratio) {
@@ -197,8 +221,9 @@ class GeekmagicMiniDisplay extends utils.Adapter {
 
     async pushToDisplay(buffer, index) {
         try {
+            const filename = `${index}.jpg`;
             const form = new FormData();
-            form.append('file', buffer, { filename: `${index}.jpg`, contentType: 'image/jpeg' });
+            form.append('file', buffer, { filename: filename, contentType: 'image/jpeg' });
             await axios.post(`http://${this.config.ipAddress}/doUpload?dir=%2Fimage%2F`, form.getBuffer(), { headers: { 'Content-Type': `multipart/form-data; boundary=${form.getBoundary()}` }, timeout: 20000 });
             this.log.info(`[Slot ${index}] Upload successful`);
         } catch (error) {
@@ -219,11 +244,13 @@ class GeekmagicMiniDisplay extends utils.Adapter {
     }
 
     async onStateChange(id, state) {
-        if (!state || state.ack) return;
+        if (!state) return; // Reaction to all changes (ack: true and false)
         await this.refreshConfig();
-        const slotsToUpdate = new Set();
-        for (const w of this.currentWidgets) { if (w.enabled && w.oid === id) slotsToUpdate.add(parseInt(w.slot) || 0); }
-        for (const s of slotsToUpdate) await this.renderSlot(s, this.currentWidgets.filter(w => w.enabled && (parseInt(w.slot) || 0) === s));
+        for (const w of this.currentWidgets) {
+            if (w.enabled && w.oid === id) {
+                this.dirtySlots.add(parseInt(w.slot) || 0);
+            }
+        }
     }
 
     sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
