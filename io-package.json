@@ -81,9 +81,10 @@
 		]
 	},
 	"native": {
-		"ipAddress": "192.168.1.1",
-		"model": "smalltv_pro"
-	},
-	"objects": [],
+	        "ipAddress": "192.168.1.1",
+	        "model": "smalltv_pro",
+	        "updateInterval": 30,
+	        "widgets": []
+	},	"objects": [],
 	"instanceObjects": []
 }
