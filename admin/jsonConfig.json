@@ -13,8 +13,7 @@
                     "default": 30, 
                     "min": 5, 
                     "max": 3600,
-                    "sm": 6,
-                    "help": "Wie oft sollen geänderte Werte zum Display gesendet werden? (Empfohlen: 10-60s)"
+                    "sm": 6
                 }
             }
         },
@@ -27,21 +26,21 @@
                     "label": "Widget Liste",
                     "items": [
                         { "type": "checkbox", "attr": "enabled", "title": "Aktiv", "width": "40px", "default": true },
-                        { "type": "number", "attr": "slot", "title": "Screen Nr.", "width": "70px", "default": 0 },
+                        { "type": "number", "attr": "slot", "title": "Slot", "width": "50px", "default": 0 },
                         { 
-                            "type": "select", "attr": "pos", "title": "Position", "width": "120px", 
+                            "type": "select", "attr": "pos", "title": "Pos", "width": "100px", 
                             "options": [
-                                { "label": "Vollbild (1x1)", "value": "full" },
-                                { "label": "Oben Links (2x2)", "value": "tl" },
-                                { "label": "Oben Rechts (2x2)", "value": "tr" },
-                                { "label": "Unten Links (2x2)", "value": "bl" },
-                                { "label": "Unten Rechts (2x2)", "value": "br" }
+                                { "label": "Vollbild", "value": "full" },
+                                { "label": "Oben Links", "value": "tl" },
+                                { "label": "Oben Rechts", "value": "tr" },
+                                { "label": "Unten Links", "value": "bl" },
+                                { "label": "Unten Rechts", "value": "br" }
                             ],
                             "default": "full"
                         },
                         { "type": "objectId", "attr": "oid", "title": "Datenpunkt", "width": "200px" },
                         { 
-                            "type": "select", "attr": "widgetType", "title": "Typ", "width": "100px", 
+                            "type": "select", "attr": "widgetType", "title": "Typ", "width": "90px", 
                             "options": [
                                 { "label": "Text", "value": "text" },
                                 { "label": "Tacho", "value": "gauge" },
@@ -50,11 +49,12 @@
                             ],
                             "default": "text" 
                         },
-                        { "type": "text", "attr": "label", "title": "Label", "width": "120px" },
-                        { "type": "text", "attr": "unit", "title": "Einheit", "width": "50px" },
+                        { "type": "text", "attr": "label", "title": "Label", "width": "100px" },
+                        { "type": "text", "attr": "unit", "title": "Unit", "width": "40px" },
+                        { "type": "number", "attr": "decimals", "title": "Dezimal", "width": "50px", "default": 1 },
                         { "type": "color", "attr": "color", "title": "Farbe", "width": "50px", "default": "#00FF00" },
-                        { "type": "number", "attr": "min", "title": "Min", "width": "50px", "default": 0 },
-                        { "type": "number", "attr": "max", "title": "Max", "width": "50px", "default": 100 }
+                        { "type": "number", "attr": "min", "title": "Min", "width": "60px", "default": 0, "step": 0.1 },
+                        { "type": "number", "attr": "max", "title": "Max", "width": "60px", "default": 100, "step": 0.1 }
                     ]
                 }
             }

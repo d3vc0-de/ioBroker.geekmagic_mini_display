@@ -16,33 +16,22 @@ class GeekmagicMiniDisplay extends utils.Adapter {
     }
 
     async onReady() {
-        this.log.info('Starting GeekMagic Mini Display (Clean Mode)...');
+        this.log.info('Starting GeekMagic Mini Display (Float Support)...');
         if (!this.config.ipAddress) return;
-
         await this.refreshConfig();
-
         for (const w of this.currentWidgets) {
             if (w.enabled && w.oid) await this.subscribeForeignStatesAsync(w.oid);
         }
-
         await this.setObjectNotExistsAsync('info.connection', {
             type: 'state',
             common: { name: 'Connection Status', type: 'boolean', role: 'indicator.connected', read: true, write: false },
             native: {},
         });
-
         this.checkConnection();
         this.connectionInterval = setInterval(() => this.checkConnection(), 60000);
-        
-        // Render all screens once on startup
         await this.renderAllScreens();
-        
         const intervalMs = (parseInt(this.config.updateInterval) || 30) * 1000;
         this.renderInterval = setInterval(() => this.processDirtySlots(), intervalMs);
-    }
-
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     async refreshConfig() {
@@ -58,7 +47,6 @@ class GeekmagicMiniDisplay extends utils.Adapter {
 
     async processDirtySlots() {
         if (this.dirtySlots.size === 0) return;
-        this.log.info(`Updating ${this.dirtySlots.size} slots...`);
         await this.refreshConfig();
         const slotsToProcess = Array.from(this.dirtySlots);
         this.dirtySlots.clear();
@@ -116,7 +104,7 @@ class GeekmagicMiniDisplay extends utils.Adapter {
                     const state = await this.getForeignStateAsync(w.oid);
                     if (state && state.val !== null) val = state.val;
                 }
-                await this.drawWidget(image, x, y, cellSize, w.widgetType, val, w.label, w.unit, w.color, w.min || 0, w.max || 100, fontS, fontM);
+                await this.drawWidget(image, x, y, cellSize, w, val, fontS, fontM);
             }
             const buffer = await image.getBufferAsync(Jimp.MIME_JPEG);
             await this.pushToDisplay(buffer, slotNum);
@@ -125,20 +113,32 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         }
     }
 
-    async drawWidget(image, x, y, size, type, val, label, unit, colorHex, min, max, fontS, fontM) {
-        const colorInt = parseInt((colorHex || '#00FF00').replace('#', '0x') + 'FF', 16);
-        const displayValue = (val !== null && val !== undefined ? val.toString() : '-') + (unit ? ' ' + unit : '');
+    async drawWidget(image, x, y, size, widget, val, fontS, fontM) {
+        const colorInt = parseInt((widget.color || '#00FF00').replace('#', '0x') + 'FF', 16);
+        const decimals = widget.decimals !== undefined ? parseInt(widget.decimals) : 1;
+        
+        // Format value with decimals
+        let displayValue = '-';
+        if (val !== null && val !== undefined) {
+            displayValue = typeof val === 'number' ? val.toFixed(decimals) : val.toString();
+        }
+        displayValue += (widget.unit ? ' ' + widget.unit : '');
+
         const currentFont = size < 200 ? fontS : fontM;
-        if (label) image.print(fontS, x + 2, y + 2, { text: label.toString(), alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
-        if (type === 'progress') {
+        const min = widget.min !== undefined ? parseFloat(widget.min) : 0;
+        const max = widget.max !== undefined ? parseFloat(widget.max) : 100;
+
+        if (widget.label) image.print(fontS, x + 2, y + 2, { text: widget.label.toString(), alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+
+        if (widget.widgetType === 'progress') {
             const barH = size < 200 ? 10 : 20;
             this.drawProgressBar(image, val, min, max, x + 10, y + (size / 2) - 5, size - 20, barH, colorInt);
             image.print(currentFont, x + 2, y + (size / 2) + barH + 5, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
-        } else if (type === 'gauge') {
+        } else if (widget.widgetType === 'gauge') {
             const radius = size / 3.5;
             this.drawGauge(image, val, min, max, x + (size / 2), y + (size / 2) + 10, radius, colorInt);
             image.print(currentFont, x + 2, y + (size / 2) + 25, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
-        } else if (type === 'circle') {
+        } else if (widget.widgetType === 'circle') {
             const radius = size / 3.5;
             this.drawCircleProgress(image, val, min, max, x + (size / 2), y + (size / 2), radius, colorInt);
             image.print(currentFont, x + 2, y + (size / 2) - 10, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
@@ -178,11 +178,11 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         const startAngle = -Math.PI / 2, currentAngle = startAngle + (percent * Math.PI * 2), thickness = radius / 4;
         for (let t = 0; t < thickness; t++) {
             const r = radius - t;
-            for (let a = 0; a <= Math.PI * 2; a += 0.02) {
+            for (let a = 0; a <= Math.PI * 2; a += 0.015) {
                 const px = centerX + Math.cos(a) * r, py = centerY + Math.sin(a) * r;
                 image.setPixelColor(0x333333FF, Math.round(px), Math.round(py));
             }
-            for (let a = startAngle; a <= currentAngle; a += 0.02) {
+            for (let a = startAngle; a <= currentAngle; a += 0.015) {
                 const px = centerX + Math.cos(a) * r, py = centerY + Math.sin(a) * r;
                 image.setPixelColor(color, Math.round(px), Math.round(py));
             }
@@ -191,14 +191,25 @@ class GeekmagicMiniDisplay extends utils.Adapter {
 
     async pushToDisplay(buffer, index) {
         try {
+            const filename = `${index}.jpg`;
             const form = new FormData();
-            form.append('file', buffer, { filename: `${index}.jpg`, contentType: 'image/jpeg' });
+            form.append('file', buffer, { filename: filename, contentType: 'image/jpeg' });
             const formBuffer = form.getBuffer();
             const headers = { 'Content-Type': `multipart/form-data; boundary=${form.getBoundary()}` };
             await axios.post(`http://${this.config.ipAddress}/doUpload?dir=%2Fimage%2F`, formBuffer, { headers, timeout: 20000 });
             this.log.info(`[Slot ${index}] Upload successful`);
         } catch (error) {
             if (!error.message.includes('Duplicate Content-Length')) this.log.error(`[Slot ${index}] Push failed: ${error.message}`);
+        }
+    }
+
+    async deleteFromDisplay(index) {
+        try {
+            const url = `http://${this.config.ipAddress}/delete?file=%2Fimage%2F${index}.jpg`;
+            await axios.get(url, { timeout: 5000 });
+            this.log.info(`[Slot ${index}] Deleted from device`);
+        } catch (error) {
+            this.log.debug(`[Slot ${index}] Delete request sent`);
         }
     }
 
@@ -220,6 +231,7 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         }
     }
 
+    sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
     onUnload(callback) {
         try { if (this.connectionInterval) clearInterval(this.connectionInterval); if (this.renderInterval) clearInterval(this.renderInterval); callback(); } catch (e) { callback(); }
     }
