@@ -16,7 +16,7 @@ class GeekmagicMiniDisplay extends utils.Adapter {
     }
 
     async onReady() {
-        this.log.info('Starting GeekMagic Mini Display (True Gradient Widgets)...');
+        this.log.info('Starting GeekMagic Mini Display (White Text Mode)...');
         if (!this.config.ipAddress) return;
         await this.refreshConfig();
         for (const w of this.currentWidgets) {
@@ -117,13 +117,6 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         const min = widget.min !== undefined ? parseFloat(widget.min.toString().replace(',', '.')) : 0;
         const max = widget.max !== undefined ? parseFloat(widget.max.toString().replace(',', '.')) : 100;
         
-        // Single color for text (interpolated based on current value)
-        let textColorHex = widget.color || '#00FF00';
-        if (widget.useGradient && widget.colorStart && widget.colorEnd) {
-            textColorHex = this.interpolateColor(widget.colorStart, widget.colorEnd, val, min, max);
-        }
-        const textColorInt = parseInt(textColorHex.replace('#', '0x') + 'FF', 16);
-
         const decimals = widget.decimals !== undefined ? parseInt(widget.decimals) : 1;
         let displayValue = (val !== null && val !== undefined ? (typeof val === 'number' ? val.toFixed(decimals) : val.toString()) : '-') + (widget.unit ? ' ' + widget.unit : '');
 
@@ -133,36 +126,19 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         if (widget.widgetType === 'progress') {
             const barH = size < 200 ? 10 : 20;
             this.drawProgressBar(image, val, min, max, x + 10, y + (size / 2) - 5, size - 20, barH, widget);
-            this.printColored(image, currentFont, x + 2, y + (size / 2) + barH + 5, displayValue, size - 4, textColorInt);
+            image.print(currentFont, x + 2, y + (size / 2) + barH + 5, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
         } else if (widget.widgetType === 'gauge') {
             const radius = size / 3.5;
             this.drawGauge(image, val, min, max, x + (size / 2), y + (size / 2) + 10, radius, widget);
-            this.printColored(image, currentFont, x + 2, y + (size / 2) + 25, displayValue, size - 4, textColorInt);
+            image.print(currentFont, x + 2, y + (size / 2) + 25, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
         } else if (widget.widgetType === 'circle') {
             const radius = size / 3.5;
             this.drawCircleProgress(image, val, min, max, x + (size / 2), y + (size / 2), radius, widget);
-            this.printColored(image, currentFont, x + 2, y + (size / 2) - 10, displayValue, size - 4, textColorInt);
+            image.print(currentFont, x + 2, y + (size / 2) - 10, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
         } else {
-            this.printColored(image, currentFont, x + 2, y + (size / 2) - 15, displayValue, size - 4, textColorInt);
+            // Text only (always white as requested)
+            image.print(currentFont, x + 2, y + (size / 2) - 15, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
         }
-    }
-
-    printColored(image, font, x, y, text, width, colorInt) {
-        const tempImage = new Jimp(width + 10, 50, 0x00000000);
-        tempImage.print(font, 0, 0, { text: text.toString(), alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, width);
-        tempImage.scan(0, 0, tempImage.bitmap.width, tempImage.bitmap.height, function(sx, sy, idx) {
-            if (this.bitmap.data[idx + 0] > 200) {
-                this.bitmap.data[idx + 0] = (colorInt >> 24) & 0xff;
-                this.bitmap.data[idx + 1] = (colorInt >> 16) & 0xff;
-                this.bitmap.data[idx + 2] = (colorInt >> 8) & 0xff;
-            }
-        });
-        image.blit(tempImage, x, y);
-    }
-
-    interpolateColor(startHex, endHex, val, min, max) {
-        const ratio = Math.min(Math.max((val - min) / (max - min), 0), 1);
-        return this.getColorByRatio(startHex, endHex, ratio);
     }
 
     getColorByRatio(startHex, endHex, ratio) {
@@ -181,14 +157,10 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         const percent = Math.min(Math.max((value - min) / (max - min), 0), 1);
         for (let i = 0; i < width; i++) {
             const ratio = i / width;
-            const colorHex = (widget.useGradient && widget.colorStart && widget.colorEnd) ? this.getColorByRatio(widget.colorStart, widget.colorEnd, ratio) : widget.color;
-            const colorInt = parseInt((colorHex || '#00FF00').replace('#', '0x') + 'FF', 16);
+            const colorHex = (widget.useGradient && widget.colorStart && widget.colorEnd) ? this.getColorByRatio(widget.colorStart, widget.colorEnd, ratio) : (widget.color || '#00FF00');
+            const colorInt = parseInt(colorHex.replace('#', '0x') + 'FF', 16);
             for (let j = 0; j < height; j++) {
-                if (i < width * percent) {
-                    image.setPixelColor(colorInt, x + i, y + j);
-                } else {
-                    image.setPixelColor(0x333333FF, x + i, y + j);
-                }
+                image.setPixelColor(i < width * percent ? colorInt : 0x333333FF, x + i, y + j);
             }
         }
     }
@@ -200,11 +172,10 @@ class GeekmagicMiniDisplay extends utils.Adapter {
             const r = radius - t;
             for (let a = startAngle; a <= 0; a += 0.02) {
                 const angleRatio = (a - startAngle) / Math.PI;
-                const isActive = angleRatio <= percent;
-                const colorHex = (widget.useGradient && widget.colorStart && widget.colorEnd) ? this.getColorByRatio(widget.colorStart, widget.colorEnd, angleRatio) : widget.color;
-                const colorInt = parseInt((colorHex || '#00FF00').replace('#', '0x') + 'FF', 16);
+                const colorHex = (widget.useGradient && widget.colorStart && widget.colorEnd) ? this.getColorByRatio(widget.colorStart, widget.colorEnd, angleRatio) : (widget.color || '#00FF00');
+                const colorInt = parseInt(colorHex.replace('#', '0x') + 'FF', 16);
                 const px = centerX + Math.cos(a) * r, py = centerY + Math.sin(a) * r;
-                image.setPixelColor(isActive ? colorInt : 0x333333FF, Math.round(px), Math.round(py));
+                image.setPixelColor(angleRatio <= percent ? colorInt : 0x333333FF, Math.round(px), Math.round(py));
             }
         }
     }
@@ -216,11 +187,10 @@ class GeekmagicMiniDisplay extends utils.Adapter {
             const r = radius - t;
             for (let a = startAngle; a <= startAngle + Math.PI * 2; a += 0.015) {
                 const angleRatio = (a - startAngle) / (Math.PI * 2);
-                const isActive = angleRatio <= percent;
-                const colorHex = (widget.useGradient && widget.colorStart && widget.colorEnd) ? this.getColorByRatio(widget.colorStart, widget.colorEnd, angleRatio) : widget.color;
-                const colorInt = parseInt((colorHex || '#00FF00').replace('#', '0x') + 'FF', 16);
+                const colorHex = (widget.useGradient && widget.colorStart && widget.colorEnd) ? this.getColorByRatio(widget.colorStart, widget.colorEnd, angleRatio) : (widget.color || '#00FF00');
+                const colorInt = parseInt(colorHex.replace('#', '0x') + 'FF', 16);
                 const px = centerX + Math.cos(a) * r, py = centerY + Math.sin(a) * r;
-                image.setPixelColor(isActive ? colorInt : 0x333333FF, Math.round(px), Math.round(py));
+                image.setPixelColor(angleRatio <= percent ? colorInt : 0x333333FF, Math.round(px), Math.round(py));
             }
         }
     }
@@ -229,8 +199,7 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         try {
             const form = new FormData();
             form.append('file', buffer, { filename: `${index}.jpg`, contentType: 'image/jpeg' });
-            const headers = { 'Content-Type': `multipart/form-data; boundary=${form.getBoundary()}` };
-            await axios.post(`http://${this.config.ipAddress}/doUpload?dir=%2Fimage%2F`, form.getBuffer(), { headers, timeout: 20000 });
+            await axios.post(`http://${this.config.ipAddress}/doUpload?dir=%2Fimage%2F`, form.getBuffer(), { headers: { 'Content-Type': `multipart/form-data; boundary=${form.getBoundary()}` }, timeout: 20000 });
             this.log.info(`[Slot ${index}] Upload successful`);
         } catch (error) {
             if (!error.message.includes('Duplicate Content-Length')) this.log.error(`[Slot ${index}] Push failed: ${error.message}`);
@@ -252,9 +221,9 @@ class GeekmagicMiniDisplay extends utils.Adapter {
     async onStateChange(id, state) {
         if (!state || state.ack) return;
         await this.refreshConfig();
-        for (const w of this.currentWidgets) {
-            if (w.enabled && w.oid === id) this.dirtySlots.add(parseInt(w.slot) || 0);
-        }
+        const slotsToUpdate = new Set();
+        for (const w of this.currentWidgets) { if (w.enabled && w.oid === id) slotsToUpdate.add(parseInt(w.slot) || 0); }
+        for (const s of slotsToUpdate) await this.renderSlot(s, this.currentWidgets.filter(w => w.enabled && (parseInt(w.slot) || 0) === s));
     }
 
     sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
