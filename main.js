@@ -3,200 +3,223 @@
 const utils = require('@iobroker/adapter-core');
 const axios = require('axios');
 const FormData = require('form-data');
-const fs = require('fs');
-const path = require('path');
 const Jimp = require('jimp');
 
 class GeekmagicMiniDisplay extends utils.Adapter {
     constructor(options) {
-        super({
-            ...options,
-            name: 'geekmagic_mini_display',
-        });
+        super({ ...options, name: 'geekmagic_mini_display' });
         this.on('ready', this.onReady.bind(this));
         this.on('stateChange', this.onStateChange.bind(this));
         this.on('unload', this.onUnload.bind(this));
-        this.renderInterval = null;
+        this.currentWidgets = [];
+        this.dirtySlots = new Set();
     }
 
     async onReady() {
-        this.log.info('Starting GeekMagic Mini Display adapter...');
+        this.log.info('Starting GeekMagic Mini Display (Stay-Time Support)...');
+        if (!this.config.ipAddress) return;
 
-        if (!this.config.ipAddress) {
-            this.log.warn('No IP address configured. Please check adapter settings.');
-            return;
+        await this.refreshConfig();
+
+        // Subscribe to OIDs
+        for (const w of this.currentWidgets) {
+            if (w.enabled && w.oid) await this.subscribeForeignStatesAsync(w.oid);
         }
 
-        // Global states
-        await this.setObjectNotExistsAsync('brightness', {
-            type: 'state',
-            common: { name: 'Brightness', type: 'number', role: 'level.brightness', read: true, write: true, min: 0, max: 100, unit: '%' },
-            native: {},
-        });
         await this.setObjectNotExistsAsync('info.connection', {
             type: 'state',
             common: { name: 'Connection Status', type: 'boolean', role: 'indicator.connected', read: true, write: false },
             native: {},
         });
 
-        // Initialize Layout Objects
-        await this.createLayoutObjects();
-
-        this.subscribeStates('*');
-
-        // Initial connection check & render
         this.checkConnection();
         this.connectionInterval = setInterval(() => this.checkConnection(), 60000);
-
-        // Auto-Update every 5 minutes if something changed (or just periodic)
-        this.renderInterval = setInterval(() => this.renderGrid(), 300000);
+        
+        // Initial setup on device
+        await this.setStayTimeOnDevice();
+        await this.renderAllScreens();
+        
+        const intervalMs = (parseInt(this.config.updateInterval) || 30) * 1000;
+        this.renderInterval = setInterval(() => this.processDirtySlots(), intervalMs);
     }
 
-    async createLayoutObjects() {
-        const layout = this.config.layout || '1x1';
-        let cells = 1;
-        if (layout === '2x2') cells = 4;
-        if (layout === '3x3') cells = 9;
-
-        for (let i = 1; i <= cells; i++) {
-            const cellPath = `cell${i}`;
-            await this.setObjectNotExistsAsync(`${cellPath}.text`, {
-                type: 'state',
-                common: { name: `Cell ${i} Text`, type: 'string', role: 'text', read: true, write: true, def: '' },
-                native: {},
-            });
-            await this.setObjectNotExistsAsync(`${cellPath}.value`, {
-                type: 'state',
-                common: { name: `Cell ${i} Value`, type: 'string', role: 'text', read: true, write: true, def: '' },
-                native: {},
-            });
-            await this.setObjectNotExistsAsync(`${cellPath}.unit`, {
-                type: 'state',
-                common: { name: `Cell ${i} Unit`, type: 'string', role: 'text', read: true, write: true, def: '' },
-                native: {},
-            });
-            await this.setObjectNotExistsAsync(`${cellPath}.chartData`, {
-                type: 'state',
-                common: { name: `Cell ${i} Chart Data (JSON Array)`, type: 'string', role: 'json', read: true, write: true, def: '[]' },
-                native: {},
-            });
-        }
-    }
-
-    async renderGrid() {
-        const layout = this.config.layout || '1x1';
-        const image = new Jimp(240, 240, 0x000000FF); // Black background
-        const fontSmall = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
-        const fontMedium = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
-
-        let cellSize = 240;
-        let cols = 1;
-        if (layout === '2x2') { cellSize = 120; cols = 2; }
-        if (layout === '3x3') { cellSize = 80; cols = 3; }
-
-        const cellsCount = cols * cols;
-
-        for (let i = 1; i <= cellsCount; i++) {
-            const x = ((i - 1) % cols) * cellSize;
-            const y = Math.floor((i - 1) / cols) * cellSize;
-
-            const text = await this.getStateAsync(`cell${i}.text`);
-            const value = await this.getStateAsync(`cell${i}.value`);
-            const unit = await this.getStateAsync(`cell${i}.unit`);
-            const chartData = await this.getStateAsync(`cell${i}.chartData`);
-
-            // Draw Background Border for Grid
-            if (layout !== '1x1') {
-                for (let px = 0; px < cellSize; px++) {
-                    image.setPixelColor(0x333333FF, x + px, y); // Top border
-                    image.setPixelColor(0x333333FF, x, y + px); // Left border
-                }
-            }
-
-            // Draw Value
-            if (value && value.val) {
-                const displayValue = value.val.toString() + (unit && unit.val ? ' ' + unit.val : '');
-                const currentFont = layout === '3x3' ? fontSmall : fontMedium;
-                image.print(currentFont, x + 5, y + (cellSize / 3), {
-                    text: displayValue,
-                    alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER,
-                    alignmentY: Jimp.VERTICAL_ALIGN_MIDDLE
-                }, cellSize - 10, cellSize / 3);
-            }
-
-            // Draw Label (Text)
-            if (text && text.val) {
-                image.print(fontSmall, x + 2, y + 2, {
-                    text: text.val.toString(),
-                    alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER
-                }, cellSize - 4, 20);
-            }
-
-            // Draw Sparkline Graph if data exists
-            if (chartData && chartData.val) {
-                try {
-                    const data = JSON.parse(chartData.val.toString());
-                    if (Array.isArray(data) && data.length > 1) {
-                        this.drawSparkline(image, data, x + 5, y + cellSize - 25, cellSize - 10, 20);
-                    }
-                } catch (e) {
-                    this.log.error(`Error parsing chart data for cell ${i}: ${e.message}`);
-                }
-            }
-        }
-
-        const buffer = await image.getBufferAsync(Jimp.MIME_JPEG);
-        await this.pushToDisplay(buffer);
-    }
-
-    drawSparkline(image, data, x, y, width, height) {
-        const min = Math.min(...data);
-        const max = Math.max(...data);
-        const range = max - min || 1;
-
-        for (let i = 0; i < data.length - 1; i++) {
-            const x1 = x + (i * (width / (data.length - 1)));
-            const y1 = y + height - ((data[i] - min) / range) * height;
-            const x2 = x + ((i + 1) * (width / (data.length - 1)));
-            const y2 = y + height - ((data[i + 1] - min) / range) * height;
-
-            // Simple line drawing (pixel by pixel approximation for Jimp)
-            this.drawLine(image, Math.round(x1), Math.round(y1), Math.round(x2), Math.round(y2), 0x00FF00FF);
-        }
-    }
-
-    drawLine(image, x0, y0, x1, y1, color) {
-        const dx = Math.abs(x1 - x0);
-        const dy = Math.abs(y1 - y0);
-        const sx = (x0 < x1) ? 1 : -1;
-        const sy = (y0 < y1) ? 1 : -1;
-        let err = dx - dy;
-
-        while (true) {
-            image.setPixelColor(color, x0, y0);
-            if ((x0 === x1) && (y0 === y1)) break;
-            const e2 = 2 * err;
-            if (e2 > -dy) { err -= dy; x0 += sx; }
-            if (e2 < dx) { err += dx; y0 += sy; }
-        }
-    }
-
-    async pushToDisplay(buffer) {
+    async setStayTimeOnDevice() {
+        if (!this.config.ipAddress || !this.config.stayTime) return;
         try {
-            const ip = this.config.ipAddress;
-            const form = new FormData();
-            form.append('file', buffer, { filename: '0.jpg', contentType: 'image/jpeg' });
-            const url = `http://${ip}/doUpload?dir=%2Fimage%2F`;
-            await axios.post(url, form, { headers: { ...form.getHeaders() }, timeout: 5000 });
-            this.log.debug('Display updated successfully');
+            const stay = parseInt(this.config.stayTime);
+            this.log.info(`Setting picture stay time to ${stay}s on device...`);
+            await axios.get(`http://${this.config.ipAddress}/save?stay=${stay}`, { timeout: 5000 });
+        } catch (e) {
+            this.log.warn(`Failed to set stay time: ${e.message}`);
+        }
+    }
+
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async refreshConfig() {
+        const obj = await this.getForeignObjectAsync(`system.adapter.${this.namespace}`);
+        if (obj && obj.native && obj.native.widgets) {
+            let widgets = obj.native.widgets;
+            if (typeof widgets === 'string') {
+                try { widgets = JSON.parse(widgets); } catch (e) { widgets = []; }
+            }
+            this.currentWidgets = Array.isArray(widgets) ? widgets : [];
+        }
+    }
+
+    async processDirtySlots() {
+        if (this.dirtySlots.size === 0) return;
+        this.log.info(`Updating ${this.dirtySlots.size} slots...`);
+        await this.refreshConfig();
+        const slotsToProcess = Array.from(this.dirtySlots);
+        this.dirtySlots.clear();
+        for (const slotNum of slotsToProcess) {
+            const widgetsForSlot = this.currentWidgets.filter(w => w.enabled && (parseInt(w.slot) || 0) === slotNum);
+            if (widgetsForSlot.length > 0) {
+                await this.renderSlot(slotNum, widgetsForSlot);
+                await this.sleep(1500); 
+            }
+        }
+    }
+
+    async renderAllScreens() {
+        await this.refreshConfig();
+        const activeSlots = new Set();
+        const slots = {};
+        for (const w of this.currentWidgets) {
+            if (!w.enabled) continue;
+            const sNum = parseInt(w.slot) || 0;
+            if (!slots[sNum]) slots[sNum] = [];
+            slots[sNum].push(w);
+            activeSlots.add(sNum);
+        }
+        for (const slotNum in slots) {
+            await this.renderSlot(parseInt(slotNum), slots[slotNum]);
+            await this.sleep(1500);
+        }
+    }
+
+    async renderSlot(slotNum, widgets) {
+        try {
+            const image = await new Promise((resolve, reject) => {
+                new Jimp(240, 240, 0x000000FF, (err, img) => {
+                    if (err) reject(err); else resolve(img);
+                });
+            });
+            const fontS = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
+            const fontM = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
+            const is2x2 = widgets.some(w => w.pos !== 'full');
+            const cellSize = is2x2 ? 120 : 240;
+
+            for (const w of widgets) {
+                let x = 0, y = 0;
+                if (is2x2) {
+                    if (w.pos === 'tr') x = 120;
+                    if (w.pos === 'bl') y = 120;
+                    if (w.pos === 'br') { x = 120; y = 120; }
+                    for (let p = 0; p < cellSize; p++) {
+                        image.setPixelColor(0x222222FF, x + p, y);
+                        image.setPixelColor(0x222222FF, x, y + p);
+                    }
+                }
+                let val = 0;
+                if (w.oid) {
+                    const state = await this.getForeignStateAsync(w.oid);
+                    if (state && state.val !== null) val = state.val;
+                }
+                await this.drawWidget(image, x, y, cellSize, w.widgetType, val, w.label, w.unit, w.color, w.min || 0, w.max || 100, fontS, fontM);
+            }
+            const buffer = await image.getBufferAsync(Jimp.MIME_JPEG);
+            await this.pushToDisplay(buffer, slotNum);
         } catch (error) {
-            this.log.error(`Display push failed: ${error.message}`);
+            this.log.error(`[Slot ${slotNum}] Render error: ${error.message}`);
+        }
+    }
+
+    async drawWidget(image, x, y, size, type, val, label, unit, colorHex, min, max, fontS, fontM) {
+        const colorInt = parseInt((colorHex || '#00FF00').replace('#', '0x') + 'FF', 16);
+        const displayValue = (val !== null && val !== undefined ? val.toString() : '-') + (unit ? ' ' + unit : '');
+        const currentFont = size < 200 ? fontS : fontM;
+        if (label) image.print(fontS, x + 2, y + 2, { text: label.toString(), alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+        if (type === 'progress') {
+            const barH = size < 200 ? 10 : 20;
+            this.drawProgressBar(image, val, min, max, x + 10, y + (size / 2) - 5, size - 20, barH, colorInt);
+            image.print(currentFont, x + 2, y + (size / 2) + barH + 5, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+        } else if (type === 'gauge') {
+            const radius = size / 3.5;
+            this.drawGauge(image, val, min, max, x + (size / 2), y + (size / 2) + 10, radius, colorInt);
+            image.print(currentFont, x + 2, y + (size / 2) + 25, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+        } else if (type === 'circle') {
+            const radius = size / 3.5;
+            this.drawCircleProgress(image, val, min, max, x + (size / 2), y + (size / 2), radius, colorInt);
+            image.print(currentFont, x + 2, y + (size / 2) - 10, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+        } else {
+            image.print(currentFont, x + 2, y + (size / 2) - 15, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+        }
+    }
+
+    drawProgressBar(image, value, min, max, x, y, width, height, color) {
+        const percent = Math.min(Math.max((value - min) / (max - min), 0), 1);
+        for (let i = 0; i < width; i++) {
+            for (let j = 0; j < height; j++) { image.setPixelColor(0x333333FF, x + i, y + j); }
+        }
+        for (let i = 0; i < (width * percent); i++) {
+            for (let j = 0; j < height; j++) { image.setPixelColor(color, x + i, y + j); }
+        }
+    }
+
+    drawGauge(image, value, min, max, centerX, centerY, radius, color) {
+        const percent = Math.min(Math.max((value - min) / (max - min), 0), 1);
+        const startAngle = -Math.PI, currentAngle = startAngle + (percent * Math.PI), thickness = radius / 4;
+        for (let t = 0; t < thickness; t++) {
+            const r = radius - t;
+            for (let a = startAngle; a <= 0; a += 0.02) {
+                const px = centerX + Math.cos(a) * r, py = centerY + Math.sin(a) * r;
+                image.setPixelColor(0x333333FF, Math.round(px), Math.round(py));
+            }
+            for (let a = startAngle; a <= currentAngle; a += 0.02) {
+                const px = centerX + Math.cos(a) * r, py = centerY + Math.sin(a) * r;
+                image.setPixelColor(color, Math.round(px), Math.round(py));
+            }
+        }
+    }
+
+    drawCircleProgress(image, value, min, max, centerX, centerY, radius, color) {
+        const percent = Math.min(Math.max((value - min) / (max - min), 0), 1);
+        const startAngle = -Math.PI / 2, currentAngle = startAngle + (percent * Math.PI * 2), thickness = radius / 4;
+        for (let t = 0; t < thickness; t++) {
+            const r = radius - t;
+            for (let a = 0; a <= Math.PI * 2; a += 0.015) {
+                const px = centerX + Math.cos(a) * r, py = centerY + Math.sin(a) * r;
+                image.setPixelColor(0x333333FF, Math.round(px), Math.round(py));
+            }
+            for (let a = startAngle; a <= currentAngle; a += 0.015) {
+                const px = centerX + Math.cos(a) * r, py = centerY + Math.sin(a) * r;
+                image.setPixelColor(color, Math.round(px), Math.round(py));
+            }
+        }
+    }
+
+    async pushToDisplay(buffer, index) {
+        try {
+            const filename = `${index}.jpg`;
+            const form = new FormData();
+            form.append('file', buffer, { filename: filename, contentType: 'image/jpeg' });
+            const formBuffer = form.getBuffer();
+            const headers = { 'Content-Type': `multipart/form-data; boundary=${form.getBoundary()}` };
+            await axios.post(`http://${this.config.ipAddress}/doUpload?dir=%2Fimage%2F`, formBuffer, { headers, timeout: 20000 });
+            this.log.info(`[Slot ${index}] Upload successful`);
+        } catch (error) {
+            if (!error.message.includes('Duplicate Content-Length')) this.log.error(`[Slot ${index}] Push failed: ${error.message}`);
         }
     }
 
     async checkConnection() {
+        if (!this.config.ipAddress) return;
         try {
-            await axios.get(`http://${this.config.ipAddress}/`, { timeout: 5000 });
+            await axios.get(`http://${this.config.ipAddress}/`, { timeout: 8000 });
             await this.setStateAsync('info.connection', { val: true, ack: true });
         } catch (error) {
             await this.setStateAsync('info.connection', { val: false, ack: true });
@@ -205,30 +228,14 @@ class GeekmagicMiniDisplay extends utils.Adapter {
 
     async onStateChange(id, state) {
         if (!state || state.ack) return;
-
-        if (id.endsWith('.brightness')) {
-            try {
-                await axios.get(`http://${this.config.ipAddress}/bright?value=${state.val}`);
-                await this.setStateAsync(id, { val: state.val, ack: true });
-            } catch (error) {
-                this.log.error(`Failed to set brightness: ${error.message}`);
-            }
-        } else {
-            // For any other change (cell value, etc.), trigger re-render
-            // We use a small debounce or just render immediately
-            await this.renderGrid();
-            await this.setStateAsync(id, { val: state.val, ack: true });
+        await this.refreshConfig();
+        for (const w of this.currentWidgets) {
+            if (w.enabled && w.oid === id) this.dirtySlots.add(parseInt(w.slot) || 0);
         }
     }
 
     onUnload(callback) {
-        try {
-            if (this.connectionInterval) clearInterval(this.connectionInterval);
-            if (this.renderInterval) clearInterval(this.renderInterval);
-            callback();
-        } catch (error) {
-            callback();
-        }
+        try { if (this.connectionInterval) clearInterval(this.connectionInterval); if (this.renderInterval) clearInterval(this.renderInterval); callback(); } catch (e) { callback(); }
     }
 }
 

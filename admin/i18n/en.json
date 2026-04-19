@@ -1,5 +1,18 @@
 {
-	"geekmagic_mini_display adapter settings": "Adapter settings for geekmagic_mini_display",
-	"option1": "option1",
-	"option2": "option2"
+    "IP Address": "IP address of the display",
+    "General Settings": "General Settings",
+    "Screens": "Screens / Images",
+    "Aktiv": "Active",
+    "Datenpunkt": "Object ID",
+    "Typ": "Widget Type",
+    "Label": "Label",
+    "Unit": "Unit",
+    "Farbe": "Color (Hex)",
+    "Min": "Min",
+    "Max": "Max",
+    "Text": "Text only",
+    "Tacho": "Gauge",
+    "Balken": "Progress bar",
+    "Kreis": "Circle",
+    "Enabled": "Enabled"
 }

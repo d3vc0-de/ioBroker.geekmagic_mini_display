@@ -1,47 +1,72 @@
 {
-	"i18n": true,
-	"type": "panel",
-	"items": {
-		"ipAddress": {
-			"type": "text",
-			"label": "IP Address",
-			"help": "IP of your GeekMagic display",
-			"newLine": true,
-			"xs": 12,
-			"sm": 12,
-			"md": 6,
-			"lg": 4,
-			"xl": 4
-		},
-		"model": {
-			"type": "select",
-			"label": "Device Model",
-			"options": [
-				{ "label": "SmallTV / SmallTV Pro", "value": "smalltv_pro" },
-				{ "label": "SmallTV Ultra", "value": "smalltv_ultra" },
-				{ "label": "Hello Cubic", "value": "hellocubic" }
-			],
-			"newLine": true,
-			"xs": 12,
-			"sm": 12,
-			"md": 6,
-			"lg": 4,
-			"xl": 4
-		},
-		"layout": {
-			"type": "select",
-			"label": "Display Layout",
-			"options": [
-				{ "label": "Single Widget (240x240)", "value": "1x1" },
-				{ "label": "2x2 Grid (120x120)", "value": "2x2" },
-				{ "label": "3x3 Grid (80x80)", "value": "3x3" }
-			],
-			"newLine": true,
-			"xs": 12,
-			"sm": 12,
-			"md": 6,
-			"lg": 4,
-			"xl": 4
-		}
-	}
+    "i18n": true,
+    "type": "tabs",
+    "items": {
+        "tabMain": {
+            "label": "General Settings",
+            "type": "panel",
+            "items": {
+                "ipAddress": { "type": "text", "label": "IP Address", "sm": 6 },
+                "updateInterval": { 
+                    "type": "number", 
+                    "label": "Update Interval (Seconds)", 
+                    "default": 30, 
+                    "min": 5, 
+                    "max": 3600,
+                    "sm": 4,
+                    "help": "Wie oft sollen geänderte Werte zum Display gesendet werden? (Empfohlen: 10-60s)"
+                },
+                "stayTime": {
+                    "type": "number",
+                    "label": "Picture Stay Time (Seconds)",
+                    "default": 10,
+                    "min": 1,
+                    "max": 3600,
+                    "sm": 4,
+                    "help": "Wie lange soll ein Bild auf dem Display angezeigt werden, bevor es zum nächsten wechselt?"
+                }
+            }
+        },
+        "tabWidgets": {
+            "label": "Display Widgets",
+            "type": "panel",
+            "items": {
+                "widgets": {
+                    "type": "table",
+                    "label": "Widget Liste",
+                    "items": [
+                        { "type": "checkbox", "attr": "enabled", "title": "Aktiv", "width": "40px", "default": true },
+                        { "type": "number", "attr": "slot", "title": "Screen Nr.", "width": "70px", "default": 0 },
+                        { 
+                            "type": "select", "attr": "pos", "title": "Position", "width": "120px", 
+                            "options": [
+                                { "label": "Vollbild (1x1)", "value": "full" },
+                                { "label": "Oben Links (2x2)", "value": "tl" },
+                                { "label": "Oben Rechts (2x2)", "value": "tr" },
+                                { "label": "Unten Links (2x2)", "value": "bl" },
+                                { "label": "Unten Rechts (2x2)", "value": "br" }
+                            ],
+                            "default": "full"
+                        },
+                        { "type": "objectId", "attr": "oid", "title": "Datenpunkt", "width": "200px" },
+                        { 
+                            "type": "select", "attr": "widgetType", "title": "Typ", "width": "100px", 
+                            "options": [
+                                { "label": "Text", "value": "text" },
+                                { "label": "Tacho", "value": "gauge" },
+                                { "label": "Balken", "value": "progress" },
+                                { "label": "Kreis", "value": "circle" }
+                            ],
+                            "default": "text" 
+                        },
+                        { "type": "text", "attr": "label", "title": "Label", "width": "120px" },
+                        { "type": "text", "attr": "unit", "title": "Einheit", "width": "50px" },
+                        { "type": "color", "attr": "color", "title": "Farbe", "width": "50px", "default": "#00FF00" },
+                        { "type": "number", "attr": "min", "title": "Min", "width": "50px", "default": 0 },
+                        { "type": "number", "attr": "max", "title": "Max", "width": "50px", "default": 100 }
+                    ]
+                }
+            }
+        }
+    }
 }

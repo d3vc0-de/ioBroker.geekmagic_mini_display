@@ -1,5 +1,20 @@
 {
-	"geekmagic_mini_display adapter settings": "Ustawienia adaptera dla geekmagic_mini_display",
-	"option1": "opcja 1",
-	"option2": "opcja 2"
+    "IP Address": "Adres IP wyświetlacza",
+    "General Settings": "Ustawienia ogólne",
+    "Screens": "Ekrany / Obrazy",
+    "Aktiv": "Aktywny",
+    "Datenpunkt": "ID obiektu",
+    "Typ": "Typ widżetu",
+    "Label": "Etykieta",
+    "Unit": "Jednostka",
+    "Farbe": "Kolor (Hex)",
+    "Min": "Minimum",
+    "Max": "Maksimum",
+    "Text": "Tylko tekst",
+    "Tacho": "Wskaźnik (Gauge)",
+    "Balken": "Pasek postępu",
+    "Kreis": "Koło",
+    "Enabled": "Włączone",
+    "Update Interval (Seconds)": "Interwał aktualizacji (sekundy)",
+    "Picture Stay Time (Seconds)": "Czas wyświetlania obrazu (sekundy)"
 }

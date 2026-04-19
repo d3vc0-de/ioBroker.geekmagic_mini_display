@@ -1,5 +1,20 @@
 {
-	"geekmagic_mini_display adapter settings": "Настройки адаптера для geekmagic_mini_display",
-	"option1": "вариант 1",
-	"option2": "вариант 2"
+    "IP Address": "IP-адрес дисплея",
+    "General Settings": "Общие настройки",
+    "Screens": "Экраны / Изображения",
+    "Aktiv": "Активный",
+    "Datenpunkt": "ID объекта",
+    "Typ": "Тип виджета",
+    "Label": "Метка",
+    "Unit": "Единица",
+    "Farbe": "Цвет (Hex)",
+    "Min": "Минимум",
+    "Max": "Максимум",
+    "Text": "Только текст",
+    "Tacho": "Индикатор (Gauge)",
+    "Balken": "Шкала прогресса",
+    "Kreis": "Круг",
+    "Enabled": "Включено",
+    "Update Interval (Seconds)": "Интервал обновления (секунды)",
+    "Picture Stay Time (Seconds)": "Время отображения изображения (секунды)"
 }
