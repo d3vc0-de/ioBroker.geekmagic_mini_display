@@ -7,14 +7,7 @@
             "type": "panel",
             "items": {
                 "ipAddress": { "type": "text", "label": "IP Address", "sm": 6 },
-                "updateInterval": { 
-                    "type": "number", 
-                    "label": "Update Interval (Seconds)", 
-                    "default": 30, 
-                    "min": 5, 
-                    "max": 3600,
-                    "sm": 6
-                }
+                "updateInterval": { "type": "number", "label": "Update Interval (Seconds)", "default": 30, "min": 5, "max": 3600, "sm": 6 }
             }
         },
         "tabWidgets": {
@@ -27,34 +20,18 @@
                     "items": [
                         { "type": "checkbox", "attr": "enabled", "title": "Aktiv", "width": "40px", "default": true },
                         { "type": "number", "attr": "slot", "title": "Slot", "width": "50px", "default": 0 },
-                        { 
-                            "type": "select", "attr": "pos", "title": "Pos", "width": "100px", 
-                            "options": [
-                                { "label": "Vollbild", "value": "full" },
-                                { "label": "Oben Links", "value": "tl" },
-                                { "label": "Oben Rechts", "value": "tr" },
-                                { "label": "Unten Links", "value": "bl" },
-                                { "label": "Unten Rechts", "value": "br" }
-                            ],
-                            "default": "full"
-                        },
-                        { "type": "objectId", "attr": "oid", "title": "Datenpunkt", "width": "200px" },
-                        { 
-                            "type": "select", "attr": "widgetType", "title": "Typ", "width": "90px", 
-                            "options": [
-                                { "label": "Text", "value": "text" },
-                                { "label": "Tacho", "value": "gauge" },
-                                { "label": "Balken", "value": "progress" },
-                                { "label": "Kreis", "value": "circle" }
-                            ],
-                            "default": "text" 
-                        },
+                        { "type": "select", "attr": "pos", "title": "Pos", "width": "80px", "options": [{"label":"Voll","value":"full"},{"label":"TL","value":"tl"},{"label":"TR","value":"tr"},{"label":"BL","value":"bl"},{"label":"BR","value":"br"}], "default": "full" },
+                        { "type": "objectId", "attr": "oid", "title": "Datenpunkt", "width": "180px" },
+                        { "type": "select", "attr": "widgetType", "title": "Typ", "width": "90px", "options": [{"label":"Text","value":"text"},{"label":"Tacho","value":"gauge"},{"label":"Balken","value":"progress"},{"label":"Kreis","value":"circle"}], "default": "text" },
                         { "type": "text", "attr": "label", "title": "Label", "width": "100px" },
                         { "type": "text", "attr": "unit", "title": "Unit", "width": "40px" },
-                        { "type": "number", "attr": "decimals", "title": "Dezimal", "width": "50px", "default": 1 },
+                        { "type": "number", "attr": "decimals", "title": "Dez", "width": "40px", "default": 1 },
                         { "type": "color", "attr": "color", "title": "Farbe", "width": "50px", "default": "#00FF00" },
-                        { "type": "text", "attr": "min", "title": "Min", "width": "60px", "default": "0" },
-                        { "type": "text", "attr": "max", "title": "Max", "width": "60px", "default": "100" }
+                        { "type": "checkbox", "attr": "useGradient", "title": "Verlauf", "width": "50px", "default": false },
+                        { "type": "color", "attr": "colorStart", "title": "Start", "width": "50px", "default": "#00FF00" },
+                        { "type": "color", "attr": "colorEnd", "title": "Ende", "width": "50px", "default": "#FF0000" },
+                        { "type": "text", "attr": "min", "title": "Min", "width": "50px", "default": "0" },
+                        { "type": "text", "attr": "max", "title": "Max", "width": "50px", "default": "100" }
                     ]
                 }
             }

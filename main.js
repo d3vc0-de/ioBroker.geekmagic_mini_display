@@ -16,7 +16,7 @@ class GeekmagicMiniDisplay extends utils.Adapter {
     }
 
     async onReady() {
-        this.log.info('Starting GeekMagic Mini Display (Text-Input Float Mode)...');
+        this.log.info('Starting GeekMagic Mini Display (Gradient Mode)...');
         if (!this.config.ipAddress) return;
         await this.refreshConfig();
         for (const w of this.currentWidgets) {
@@ -74,9 +74,6 @@ class GeekmagicMiniDisplay extends utils.Adapter {
             await this.renderSlot(parseInt(slotNum), slots[slotNum]);
             await this.sleep(1500);
         }
-        for (let i = 0; i <= 10; i++) {
-            if (!activeSlots.has(i)) await this.deleteFromDisplay(i);
-        }
     }
 
     async renderSlot(slotNum, widgets) {
@@ -117,9 +114,17 @@ class GeekmagicMiniDisplay extends utils.Adapter {
     }
 
     async drawWidget(image, x, y, size, widget, val, fontS, fontM) {
-        const colorInt = parseInt((widget.color || '#00FF00').replace('#', '0x') + 'FF', 16);
-        const decimals = widget.decimals !== undefined ? parseInt(widget.decimals) : 1;
+        const min = widget.min !== undefined ? parseFloat(widget.min.toString().replace(',', '.')) : 0;
+        const max = widget.max !== undefined ? parseFloat(widget.max.toString().replace(',', '.')) : 100;
         
+        // Calculate Target Color
+        let targetColorHex = widget.color || '#00FF00';
+        if (widget.useGradient && widget.colorStart && widget.colorEnd) {
+            targetColorHex = this.interpolateColor(widget.colorStart, widget.colorEnd, val, min, max);
+        }
+        const colorInt = parseInt(targetColorHex.replace('#', '0x') + 'FF', 16);
+
+        const decimals = widget.decimals !== undefined ? parseInt(widget.decimals) : 1;
         let displayValue = '-';
         if (val !== null && val !== undefined) {
             displayValue = typeof val === 'number' ? val.toFixed(decimals) : val.toString();
@@ -127,27 +132,62 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         displayValue += (widget.unit ? ' ' + widget.unit : '');
 
         const currentFont = size < 200 ? fontS : fontM;
-        // Parse strings to float (handles inputs like "1.859")
-        const min = widget.min !== undefined ? parseFloat(widget.min.toString().replace(',', '.')) : 0;
-        const max = widget.max !== undefined ? parseFloat(widget.max.toString().replace(',', '.')) : 100;
 
         if (widget.label) image.print(fontS, x + 2, y + 2, { text: widget.label.toString(), alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
 
         if (widget.widgetType === 'progress') {
             const barH = size < 200 ? 10 : 20;
             this.drawProgressBar(image, val, min, max, x + 10, y + (size / 2) - 5, size - 20, barH, colorInt);
-            image.print(currentFont, x + 2, y + (size / 2) + barH + 5, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+            this.printColored(image, currentFont, x + 2, y + (size / 2) + barH + 5, displayValue, size - 4, colorInt);
         } else if (widget.widgetType === 'gauge') {
             const radius = size / 3.5;
             this.drawGauge(image, val, min, max, x + (size / 2), y + (size / 2) + 10, radius, colorInt);
-            image.print(currentFont, x + 2, y + (size / 2) + 25, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+            this.printColored(image, currentFont, x + 2, y + (size / 2) + 25, displayValue, size - 4, colorInt);
         } else if (widget.widgetType === 'circle') {
             const radius = size / 3.5;
             this.drawCircleProgress(image, val, min, max, x + (size / 2), y + (size / 2), radius, colorInt);
-            image.print(currentFont, x + 2, y + (size / 2) - 10, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+            this.printColored(image, currentFont, x + 2, y + (size / 2) - 10, displayValue, size - 4, colorInt);
         } else {
-            image.print(currentFont, x + 2, y + (size / 2) - 15, { text: displayValue, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
+            // Text only in color
+            this.printColored(image, currentFont, x + 2, y + (size / 2) - 15, displayValue, size - 4, colorInt);
         }
+    }
+
+    // Hilfsfunktion zum Schreiben von farbigem Text
+    printColored(image, font, x, y, text, width, colorInt) {
+        const tempImage = new Jimp(width + 10, 50, 0x00000000);
+        tempImage.print(font, 0, 0, { text: text.toString(), alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, width);
+        
+        // Jedes weiße Pixel umfärben
+        tempImage.scan(0, 0, tempImage.bitmap.width, tempImage.bitmap.height, function(sx, sy, idx) {
+            if (this.bitmap.data[idx + 0] > 200 && this.bitmap.data[idx + 1] > 200 && this.bitmap.data[idx + 2] > 200) {
+                const r = (colorInt >> 24) & 0xff;
+                const g = (colorInt >> 16) & 0xff;
+                const b = (colorInt >> 8) & 0xff;
+                this.bitmap.data[idx + 0] = r;
+                this.bitmap.data[idx + 1] = g;
+                this.bitmap.data[idx + 2] = b;
+            }
+        });
+        image.blit(tempImage, x, y);
+    }
+
+    interpolateColor(startHex, endHex, val, min, max) {
+        const ratio = Math.min(Math.max((val - min) / (max - min), 0), 1);
+        const parse = (hex) => {
+            const h = hex.replace('#', '');
+            return {
+                r: parseInt(h.substring(0, 2), 16),
+                g: parseInt(h.substring(2, 4), 16),
+                b: parseInt(h.substring(4, 6), 16)
+            };
+        };
+        const s = parse(startHex);
+        const e = parse(endHex);
+        const r = Math.round(s.r + (e.r - s.r) * ratio).toString(16).padStart(2, '0');
+        const g = Math.round(s.g + (e.g - s.g) * ratio).toString(16).padStart(2, '0');
+        const b = Math.round(s.b + (e.b - s.b) * ratio).toString(16).padStart(2, '0');
+        return `#${r}${g}${b}`;
     }
 
     drawProgressBar(image, value, min, max, x, y, width, height, color) {
@@ -208,12 +248,9 @@ class GeekmagicMiniDisplay extends utils.Adapter {
 
     async deleteFromDisplay(index) {
         try {
-            const url = `http://${this.config.ipAddress}/delete?file=%2Fimage%2F${index}.jpg`;
-            await axios.get(url, { timeout: 5000 });
-            this.log.info(`[Slot ${index}] Deleted from device`);
-        } catch (error) {
-            this.log.debug(`[Slot ${index}] Delete request sent`);
-        }
+            await axios.get(`http://${this.config.ipAddress}/delete?file=%2Fimage%2F${index}.jpg`, { timeout: 5000 });
+            this.log.info(`[Slot ${index}] Deleted`);
+        } catch (error) { this.log.debug(`[Slot ${index}] Delete sent`); }
     }
 
     async checkConnection() {
@@ -221,9 +258,7 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         try {
             await axios.get(`http://${this.config.ipAddress}/`, { timeout: 8000 });
             await this.setStateAsync('info.connection', { val: true, ack: true });
-        } catch (error) {
-            await this.setStateAsync('info.connection', { val: false, ack: true });
-        }
+        } catch (error) { await this.setStateAsync('info.connection', { val: false, ack: true }); }
     }
 
     async onStateChange(id, state) {
