@@ -45,6 +45,10 @@ This project is inspired by and derived from the excellent work of [adrienbrault
 ## License
 MIT License
 
+Original project:
+Copyright (c) 2025 Adrien Brault (https://github.com/adrienbrault/geekmagic-hacs)
+
+ioBroker adapter:
 Copyright (c) 2026 d3vc0_de <d3vc0_de@protonmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
