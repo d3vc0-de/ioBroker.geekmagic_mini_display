@@ -16,12 +16,11 @@ class GeekmagicMiniDisplay extends utils.Adapter {
     }
 
     async onReady() {
-        this.log.info('Starting GeekMagic Mini Display (Stay-Time Support)...');
+        this.log.info('Starting GeekMagic Mini Display (Clean Mode)...');
         if (!this.config.ipAddress) return;
 
         await this.refreshConfig();
 
-        // Subscribe to OIDs
         for (const w of this.currentWidgets) {
             if (w.enabled && w.oid) await this.subscribeForeignStatesAsync(w.oid);
         }
@@ -35,23 +34,11 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         this.checkConnection();
         this.connectionInterval = setInterval(() => this.checkConnection(), 60000);
         
-        // Initial setup on device
-        await this.setStayTimeOnDevice();
+        // Render all screens once on startup
         await this.renderAllScreens();
         
         const intervalMs = (parseInt(this.config.updateInterval) || 30) * 1000;
         this.renderInterval = setInterval(() => this.processDirtySlots(), intervalMs);
-    }
-
-    async setStayTimeOnDevice() {
-        if (!this.config.ipAddress || !this.config.stayTime) return;
-        try {
-            const stay = parseInt(this.config.stayTime);
-            this.log.info(`Setting picture stay time to ${stay}s on device...`);
-            await axios.get(`http://${this.config.ipAddress}/save?stay=${stay}`, { timeout: 5000 });
-        } catch (e) {
-            this.log.warn(`Failed to set stay time: ${e.message}`);
-        }
     }
 
     sleep(ms) {
@@ -191,11 +178,11 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         const startAngle = -Math.PI / 2, currentAngle = startAngle + (percent * Math.PI * 2), thickness = radius / 4;
         for (let t = 0; t < thickness; t++) {
             const r = radius - t;
-            for (let a = 0; a <= Math.PI * 2; a += 0.015) {
+            for (let a = 0; a <= Math.PI * 2; a += 0.02) {
                 const px = centerX + Math.cos(a) * r, py = centerY + Math.sin(a) * r;
                 image.setPixelColor(0x333333FF, Math.round(px), Math.round(py));
             }
-            for (let a = startAngle; a <= currentAngle; a += 0.015) {
+            for (let a = startAngle; a <= currentAngle; a += 0.02) {
                 const px = centerX + Math.cos(a) * r, py = centerY + Math.sin(a) * r;
                 image.setPixelColor(color, Math.round(px), Math.round(py));
             }
@@ -204,9 +191,8 @@ class GeekmagicMiniDisplay extends utils.Adapter {
 
     async pushToDisplay(buffer, index) {
         try {
-            const filename = `${index}.jpg`;
             const form = new FormData();
-            form.append('file', buffer, { filename: filename, contentType: 'image/jpeg' });
+            form.append('file', buffer, { filename: `${index}.jpg`, contentType: 'image/jpeg' });
             const formBuffer = form.getBuffer();
             const headers = { 'Content-Type': `multipart/form-data; boundary=${form.getBoundary()}` };
             await axios.post(`http://${this.config.ipAddress}/doUpload?dir=%2Fimage%2F`, formBuffer, { headers, timeout: 20000 });

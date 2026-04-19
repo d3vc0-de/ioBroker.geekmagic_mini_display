@@ -13,17 +13,8 @@
                     "default": 30, 
                     "min": 5, 
                     "max": 3600,
-                    "sm": 4,
+                    "sm": 6,
                     "help": "Wie oft sollen geänderte Werte zum Display gesendet werden? (Empfohlen: 10-60s)"
-                },
-                "stayTime": {
-                    "type": "number",
-                    "label": "Picture Stay Time (Seconds)",
-                    "default": 10,
-                    "min": 1,
-                    "max": 3600,
-                    "sm": 4,
-                    "help": "Wie lange soll ein Bild auf dem Display angezeigt werden, bevor es zum nächsten wechselt?"
                 }
             }
         },
