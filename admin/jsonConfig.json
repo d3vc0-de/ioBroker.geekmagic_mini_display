@@ -53,8 +53,8 @@
                         { "type": "text", "attr": "unit", "title": "Unit", "width": "40px" },
                         { "type": "number", "attr": "decimals", "title": "Dezimal", "width": "50px", "default": 1 },
                         { "type": "color", "attr": "color", "title": "Farbe", "width": "50px", "default": "#00FF00" },
-                        { "type": "number", "attr": "min", "title": "Min", "width": "60px", "default": 0, "step": 0.001 },
-                        { "type": "number", "attr": "max", "title": "Max", "width": "60px", "default": 100, "step": 0.001 }
+                        { "type": "text", "attr": "min", "title": "Min", "width": "60px", "default": "0" },
+                        { "type": "text", "attr": "max", "title": "Max", "width": "60px", "default": "100" }
                     ]
                 }
             }

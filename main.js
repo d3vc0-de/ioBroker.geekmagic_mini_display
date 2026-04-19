@@ -16,7 +16,7 @@ class GeekmagicMiniDisplay extends utils.Adapter {
     }
 
     async onReady() {
-        this.log.info('Starting GeekMagic Mini Display (Float Support)...');
+        this.log.info('Starting GeekMagic Mini Display (Text-Input Float Mode)...');
         if (!this.config.ipAddress) return;
         await this.refreshConfig();
         for (const w of this.currentWidgets) {
@@ -74,6 +74,9 @@ class GeekmagicMiniDisplay extends utils.Adapter {
             await this.renderSlot(parseInt(slotNum), slots[slotNum]);
             await this.sleep(1500);
         }
+        for (let i = 0; i <= 10; i++) {
+            if (!activeSlots.has(i)) await this.deleteFromDisplay(i);
+        }
     }
 
     async renderSlot(slotNum, widgets) {
@@ -117,7 +120,6 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         const colorInt = parseInt((widget.color || '#00FF00').replace('#', '0x') + 'FF', 16);
         const decimals = widget.decimals !== undefined ? parseInt(widget.decimals) : 1;
         
-        // Format value with decimals
         let displayValue = '-';
         if (val !== null && val !== undefined) {
             displayValue = typeof val === 'number' ? val.toFixed(decimals) : val.toString();
@@ -125,8 +127,9 @@ class GeekmagicMiniDisplay extends utils.Adapter {
         displayValue += (widget.unit ? ' ' + widget.unit : '');
 
         const currentFont = size < 200 ? fontS : fontM;
-        const min = widget.min !== undefined ? parseFloat(widget.min) : 0;
-        const max = widget.max !== undefined ? parseFloat(widget.max) : 100;
+        // Parse strings to float (handles inputs like "1.859")
+        const min = widget.min !== undefined ? parseFloat(widget.min.toString().replace(',', '.')) : 0;
+        const max = widget.max !== undefined ? parseFloat(widget.max.toString().replace(',', '.')) : 100;
 
         if (widget.label) image.print(fontS, x + 2, y + 2, { text: widget.label.toString(), alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER }, size - 4);
 
