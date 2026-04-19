@@ -3,20 +3,21 @@
 		"name": "geekmagic_mini_display",
 		"version": "0.2.0",
 		"news": {
-		        "0.2.0": {
-		                "en": "fixed testing errors and code cleanup",
-		                "de": "Testfehler behoben und Code bereinigt",
-		                "ru": "исправлены ошибки тестирования и очистка кода",
-		                "pt": "erros de teste corrigidos e limpeza de código",
-		                "nl": "testfouten opgelost en code opgeruimd",
-		                "fr": "erreurs de test corrigées et nettoyage du code",
-		                "it": "errori di test risolti e pulizia del codice",
-		                "es": "errores de prueba corregidos y limpieza de código",
-		                "pl": "naprawiono błędy testowe i wyczyszczono kod",
-		                "uk": "виправлено помилки тестування та очищення коду",
-		                "zh-cn": "修复测试错误并清理代码"
-		        },
-		        "0.0.1": {				"en": "initial release",
+			"0.2.0": {
+				"en": "fixed testing errors and code cleanup",
+				"de": "Testfehler behoben und Code bereinigt",
+				"ru": "исправлены ошибки тестирования и очистка кода",
+				"pt": "erros de teste corrigidos e limpeza de código",
+				"nl": "testfouten opgelost en code opgeruimd",
+				"fr": "erreurs de test corrigées et nettoyage du code",
+				"it": "errori di test risolti e pulizia des codice",
+				"es": "errores de prueba corrigidos y limpieza de código",
+				"pl": "naprawiono błędy testowe i wyczyszczono kod",
+				"uk": "виправлено помилки тестування та очищення коду",
+				"zh-cn": "修复测试错误并清理代码"
+			},
+			"0.0.1": {
+				"en": "initial release",
 				"de": "Erstveröffentlichung",
 				"ru": "Начальная версия",
 				"pt": "lançamento inicial",
@@ -93,10 +94,11 @@
 		]
 	},
 	"native": {
-	        "ipAddress": "192.168.1.1",
-	        "model": "smalltv_pro",
-	        "updateInterval": 30,
-	        "widgets": []
-	},	"objects": [],
+		"ipAddress": "192.168.1.1",
+		"model": "smalltv_pro",
+		"updateInterval": 30,
+		"widgets": []
+	},
+	"objects": [],
 	"instanceObjects": []
 }
